@@ -40,14 +40,16 @@ void    ReadEE(int FDHandle, char * pReadEEAddress, eFamily Family);
 /*void    SendHexFile(HANDLE *pComDev, FILE * pFile, eFamily Family);*/
 
 /* Global features here. */
-char*   pBaudRate      = "115200";
+char*   pBaudRate       = "9600";
+long    baudrate_code   = 13; /* !! Must equal the BAUD_RATES["9600"].value !!
+                               * for correct default baud rate */
 char*   pInterfaceName = NULL;
 char*   pReadPMAddress = NULL;
 char*   pReadEEAddress = NULL;
 
-long SearchBaudRates(int baudrates)
+long SearchBaudRates(long baudrates)
 { int i = 0;
-    while ((BAUD_RATES[i].brate != 0) && (BAUD_RATES[i]) == baudrates)
+    while ((BAUD_RATES[i].brate != 0) && ((BAUD_RATES[i].brate) != baudrates))
     {
         i++;
     }
@@ -92,8 +94,16 @@ int main(int argc, char**argv) {
 				else
 				{
 					pBaudRate = ProgCommand.Arg();
+                    long BaudRate = atol(pBaudRate);
+                    baudrate_code = SearchBaudRates(BaudRate);
+                
+                    if (!baudrate_code)
+                    {
+                        printf("\nBad baudrate value.\n");
+                        PrintUsage();
+                        return 0;
+                    };
 				}
-		
 				break;
 
 			case 'p': /* Read Program Memory */
@@ -166,15 +176,23 @@ int main(int argc, char**argv) {
   {
     printf("The %s interface successfully opened. FD: %i", pInterfaceName, FDSerial);      
   }
-// Liev0thu
   
-  tcgetattr(FDSerial,&OldSerial);	// salva le impostazioni della seriale
-  NewSerial.c_cflag=B9600|CS8|CLOCAL|CREAD;
-  NewSerial.c_iflag=IGNPAR;		// ignora gli errori di parita'
-  NewSerial.c_oflag=ONLCR;		// raw output
-  NewSerial.c_lflag=0;			// no echo
-  NewSerial.c_cc[VMIN]=1;		// aspetta fino a 1 char
-  NewSerial.c_cc[VTIME]=0;		// no timeout
+  tcgetattr(FDSerial,&OldSerial);   // Save serial port features
+  /* CLOCAL = Ignore modem control lines.
+   * CS8 = Character size mask. Values are CS5, CS6, CS7, or CS8.
+   * CREAD = Enable receiver.
+   */
+  NewSerial.c_cflag = baudrate_code | CS8 | CLOCAL | CREAD;
+  /* IGNPAR = Ignore framing errors and parity errors. */
+  NewSerial.c_iflag = IGNPAR;
+  /* ONLCR = (XSI) Map NL to CR-NL on output.*/
+  NewSerial.c_oflag = ONLCR;
+  /* The setting of the ICANON canon flag in c_lflag determines whether the 
+   * terminal is operating in canonical mode (ICANON set) or noncanonical mode 
+   * (ICANON unset). By default, ICANON set.*/
+  NewSerial.c_lflag = 0;
+  NewSerial.c_cc[VMIN] = 1;		// aspetta fino a 1 char
+  NewSerial.c_cc[VTIME] = 0;		// no timeout
   tcflush(FDSerial,TCIFLUSH);		// flusha il buffer
   tcsetattr(FDSerial,TCSANOW,&NewSerial);	// reimposta la seriale
 
