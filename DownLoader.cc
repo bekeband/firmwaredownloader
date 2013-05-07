@@ -166,7 +166,6 @@ int main(int argc, char**argv) {
   {
     printf("The %s interface successfully opened. FD: %i", pInterfaceName, FDSerial);      
   }
-// Liev0thu
   
   tcgetattr(FDSerial,&OldSerial);	// salva le impostazioni della seriale
   NewSerial.c_cflag=B9600|CS8|CLOCAL|CREAD;
