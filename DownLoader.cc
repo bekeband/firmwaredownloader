@@ -42,10 +42,12 @@ void    ReadEE(int FDHandle, char * pReadEEAddress, eFamily Family);
 /* Global features here. */
 char*   pBaudRate       = "9600";
 long    baudrate_code   = 13; /* !! Must equal the BAUD_RATES["9600"].value !!
-                               * for correct default baud rate */
+                               * for correct default baud rate settings !!! */
 char*   pInterfaceName = NULL;
 char*   pReadPMAddress = NULL;
 char*   pReadEEAddress = NULL;
+
+int Default_Timeout = 10; /* Default timeout in 1/10 sec. 10*1/10 7 1 sec. */
 
 long SearchBaudRates(long baudrates)
 { int i = 0;
@@ -191,10 +193,19 @@ int main(int argc, char**argv) {
    * terminal is operating in canonical mode (ICANON set) or noncanonical mode 
    * (ICANON unset). By default, ICANON set.*/
   NewSerial.c_lflag = 0;
-  NewSerial.c_cc[VMIN] = 1;		// aspetta fino a 1 char
-  NewSerial.c_cc[VTIME] = 0;		// no timeout
-  tcflush(FDSerial,TCIFLUSH);		// flusha il buffer
-  tcsetattr(FDSerial,TCSANOW,&NewSerial);	// reimposta la seriale
+  /* special characters 
+   * The c_cc array defines the terminal special characters. 
+   * The symbolic indices (initial values) and meaning are
+   * Minimum number of characters for noncanonical read (MIN).
+   */
+  NewSerial.c_cc[VMIN] = 0; 
+  
+  /* Timeout in deciseconds for noncanonical read (TIME). */
+  
+  NewSerial.c_cc[VTIME] = Default_Timeout;  /* Timeout for Default (1 sec.))*/
+  
+  tcflush(FDSerial,TCIFLUSH);
+  tcsetattr(FDSerial,TCSANOW,&NewSerial);
 
 //  StartAddress pReadPMAddress
   eFamily Family = dsPIC30F;
@@ -215,25 +226,9 @@ int main(int argc, char**argv) {
   close(FDSerial);
   printf("Program done.\n");
   return 0;
-/*  printf("\nType character (type 'q' for quit)\n");
-  do
-  {
-      fgets(inbuffer, 200, stdin);
-//      inbuffer[insize] = '\0';
-      write(FDSerial, inbuffer, 30);
-  } while (inbuffer[0] != 'q');**/
   
 
   printf("The user type 'q' for quit from program.\n");
-	/* Read Device ID */
-//	Family = ReadID(&ComDev);
-
-	
-	/* Process Read EEPROM request and exit */
-  
-  
-  
-//	PrintUsage();
   return 0;
 }
 
@@ -271,7 +266,7 @@ void SendHexFile(int FDSerial, FILE * pFile, eFamily Family)
 	int  ExtAddr = 0;
 
 	/* Initialize Memory */
-/*	mem_cMemRow ** ppMemory = (mem_cMemRow **)malloc(sizeof(mem_cMemRow *) * 
+	mem_cMemRow ** ppMemory = (mem_cMemRow **)malloc(sizeof(mem_cMemRow *) * 
           PM_SIZE + sizeof(mem_cMemRow *) * EE_SIZE + sizeof(mem_cMemRow *) * CM_SIZE);
 
 	for(int Row = 0; Row < PM_SIZE; Row++)
@@ -279,7 +274,7 @@ void SendHexFile(int FDSerial, FILE * pFile, eFamily Family)
 		ppMemory[Row] = new mem_cMemRow(mem_cMemRow::Program, 0x000000, Row, Family);
 	}
 
-	for(int Row = 0; Row < EE_SIZE; Row++)
+/*	for(int Row = 0; Row < EE_SIZE; Row++)
 	{
 		ppMemory[Row + PM_SIZE] = new mem_cMemRow(mem_cMemRow::EEProm, 0x7FF000, Row, Family);
 	}
@@ -402,11 +397,8 @@ void SendHexFile(int FDSerial, FILE * pFile, eFamily Family)
 bool WriteCommBlock(int FDSerial, char *pBuffer , int BytesToWrite)
 {
 	bool       bWriteStat   = 0;
-/*	dword      BytesWritten = 0;
-	COMSTAT    ComStat      = {0};
-	OVERLAPPED osWrite      = {0,0,0};*/
 
-	printf("\nWriteCommBlock(%i, %s , %i)\n", FDSerial, pBuffer, BytesToWrite);
+	printf("\nWriteCommBlock(%i, %p , %i)\n", FDSerial, pBuffer, BytesToWrite);
 
   write(FDSerial, pBuffer, BytesToWrite);
 
@@ -420,21 +412,27 @@ bool WriteCommBlock(int FDSerial, char *pBuffer , int BytesToWrite)
 }
 
 /******************************************************************************/
-void ReceiveData(int FDSerial, char * pBuffer, int BytesToReceive)
+int ReceiveData(int FDSerial, char * pBuffer, int BytesToReceive)
 {
 	int Size = 0;
 
 	while(Size != BytesToReceive)
 	{
-		Size += ReadCommBlock(FDSerial, pBuffer + Size, BytesToReceive - Size);
+		Size += read(FDSerial, pBuffer + Size, BytesToReceive - Size);
+    if (!Size) 
+    {
+        printf("ERROR ! Read timeout elapsed !\n");
+        return -1;
+    }
 	}
+  return Size;
 }
 
 /******************************************************************************/
 int ReadCommBlock(int FDSerial, char * pBuffer, int MaxLength )
 {
     
-    read(FDSerial, pBuffer, MaxLength);
+    return read(FDSerial, pBuffer, MaxLength);
     
 /*	DWORD      Length;
 	COMSTAT    ComStat    = {0};
@@ -494,30 +492,26 @@ void ReadPM(int FDSerial, char * pReadPMAddress, eFamily Family)
 
 	WriteCommBlock(FDSerial, Buffer, 4);
 
-	ReceiveData(FDSerial, Buffer, RowSize * 3);
-
-	for(Count = 0; Count < RowSize * 3;)
-	{
-		printf("0x%06x: ", ReadAddress);
-
-		printf("%02x",Buffer[Count++] & 0xFF);
-		printf("%02x",Buffer[Count++] & 0xFF);
-		printf("%02x ",Buffer[Count++] & 0xFF);
-
-		printf("%02x",Buffer[Count++] & 0xFF);
-		printf("%02x",Buffer[Count++] & 0xFF);
-		printf("%02x ",Buffer[Count++] & 0xFF);
-
-		printf("%02x",Buffer[Count++] & 0xFF);
-		printf("%02x",Buffer[Count++] & 0xFF);
-		printf("%02x ",Buffer[Count++] & 0xFF);
-
-		printf("%02x",Buffer[Count++] & 0xFF);
-		printf("%02x",Buffer[Count++] & 0xFF);
-		printf("%02x\n",Buffer[Count++] & 0xFF);
-
-		ReadAddress = ReadAddress + 8;
-	}
+	if (ReceiveData(FDSerial, Buffer, RowSize * 3) > 0)
+  {
+    for(Count = 0; Count < RowSize * 3;)
+    {
+      printf("0x%06x: ", ReadAddress);
+      printf("%02x",Buffer[Count++] & 0xFF);
+      printf("%02x",Buffer[Count++] & 0xFF);
+      printf("%02x ",Buffer[Count++] & 0xFF);
+      printf("%02x",Buffer[Count++] & 0xFF);
+      printf("%02x",Buffer[Count++] & 0xFF);
+      printf("%02x ",Buffer[Count++] & 0xFF);
+      printf("%02x",Buffer[Count++] & 0xFF);
+      printf("%02x",Buffer[Count++] & 0xFF);
+      printf("%02x ",Buffer[Count++] & 0xFF);
+      printf("%02x",Buffer[Count++] & 0xFF);
+      printf("%02x",Buffer[Count++] & 0xFF);
+      printf("%02x\n",Buffer[Count++] & 0xFF);
+      ReadAddress = ReadAddress + 8;
+    }
+  }
 }
 
 /******************************************************************************/
@@ -541,7 +535,8 @@ void ReadEE(int FDHandle, char * pReadEEAddress, eFamily Family)
 
 	WriteCommBlock(FDHandle, Buffer, 4);
 
-	ReceiveData(FDHandle, Buffer, EE30F_ROW_SIZE * 2);
+	if (ReceiveData(FDHandle, Buffer, EE30F_ROW_SIZE * 2) > 0)
+  {
 
 	for(Count = 0; Count < EE30F_ROW_SIZE * 2;)
 	{
@@ -573,4 +568,5 @@ void ReadEE(int FDHandle, char * pReadEEAddress, eFamily Family)
 
 		ReadAddress = ReadAddress + 16;
 	}
+  }
 }

@@ -57,11 +57,11 @@ LDLIBSOPTIONS=
 
 # Build Targets
 .build-conf: ${BUILD_SUBPROJECTS}
-	"${MAKE}"  -f nbproject/Makefile-${CND_CONF}.mk ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/firmwaredownloader
+	"${MAKE}"  -f nbproject/Makefile-${CND_CONF}.mk ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/levelmeterfirmwaredownloader
 
-${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/firmwaredownloader: ${OBJECTFILES}
+${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/levelmeterfirmwaredownloader: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
-	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/firmwaredownloader ${OBJECTFILES} ${LDLIBSOPTIONS} 
+	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/levelmeterfirmwaredownloader ${OBJECTFILES} ${LDLIBSOPTIONS} 
 
 ${OBJECTDIR}/cmd.o: cmd.cpp 
 	${MKDIR} -p ${OBJECTDIR}
@@ -84,7 +84,7 @@ ${OBJECTDIR}/mem.o: mem.cpp
 # Clean Targets
 .clean-conf: ${CLEAN_SUBPROJECTS}
 	${RM} -r ${CND_BUILDDIR}/${CND_CONF}
-	${RM} ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/firmwaredownloader
+	${RM} ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/levelmeterfirmwaredownloader
 
 # Subprojects
 .clean-subprojects:
