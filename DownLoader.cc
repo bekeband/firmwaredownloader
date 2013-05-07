@@ -266,13 +266,13 @@ void SendHexFile(int FDSerial, FILE * pFile, eFamily Family)
 	int  ExtAddr = 0;
 
 	/* Initialize Memory */
-	mem_cMemRow ** ppMemory = (mem_cMemRow **)malloc(sizeof(mem_cMemRow *) * 
+/*	mem_cMemRow ** ppMemory = (mem_cMemRow **)malloc(sizeof(mem_cMemRow *) * 
           PM_SIZE + sizeof(mem_cMemRow *) * EE_SIZE + sizeof(mem_cMemRow *) * CM_SIZE);
 
 	for(int Row = 0; Row < PM_SIZE; Row++)
 	{
 		ppMemory[Row] = new mem_cMemRow(mem_cMemRow::Program, 0x000000, Row, Family);
-	}
+	}*/
 
 /*	for(int Row = 0; Row < EE_SIZE; Row++)
 	{
