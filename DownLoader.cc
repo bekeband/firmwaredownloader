@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include "DownLoader.h"
 #include "cmd.h"
+#include "mem.h"
 
 #if !defined (WINFOS)
   #define Sleep(X) usleep(X)
@@ -26,21 +27,21 @@ s_baudrate BAUD_RATES[]={{50, B50}, {75, B75}, {110, B110}, {134, B134}, {150, B
 {1500000, B1500000}, {2000000, B2000000}, {2500000, B2500000}, {3000000, B3000000},
 {3500000, B3500000}, {4000000, B4000000}, {0,0}};
 
-/*HANDLE OpenConnection (HANDLE *pComDev,  char *pPortName, char *pBaudRate);
-BOOL   WriteCommBlock (HANDLE *pComdDev, char *pBuffer ,  int BytesToWrite);*/
+/*HANDLE OpenConnection (HANDLE *pComDev,  char *pPortName, char *pBaudRate);*/
+bool    WriteCommBlock (int FDHandle, char *pBuffer ,  int BytesToWrite);
 int    ReadCommBlock  (int FDHandle, char *pBuffer,   int MaxLength);
 /*BOOL   CloseConnection(HANDLE *pComdDev);*/
 
-//void    ReceiveData(HANDLE *pComDev, char * pBuffer, int BytesToReceive);
+bool ReceiveData(int FDHandle, char * pBuffer, int BytesToReceive);
 void PrintUsage(void);
 void PrintFeatures();
 /*eFamily ReadID(HANDLE *pComDev);*/
 void    ReadPM(int FDHandle, char * pReadPMAddress, eFamily Family);
 void    ReadEE(int FDHandle, char * pReadEEAddress, eFamily Family);
-/*void    SendHexFile(HANDLE *pComDev, FILE * pFile, eFamily Family);*/
+void    SendHexFile(int FDHandle, FILE * pFile, eFamily Family);
 
 /* Global features here. */
-char*   pBaudRate       = "9600";
+const char*   pBaudRate       = "9600";
 long    baudrate_code   = 13; /* !! Must equal the BAUD_RATES["9600"].value !!
                                * for correct default baud rate settings !!! */
 char*   pInterfaceName = NULL;
@@ -169,7 +170,7 @@ int main(int argc, char**argv) {
 		}
 	}  
   PrintFeatures();
-
+  
   if((FDSerial = open( pInterfaceName, O_RDWR|O_NOCTTY )) < 0 )
   {
     printf("Can't open %s Interface.", pInterfaceName);
@@ -209,6 +210,16 @@ int main(int argc, char**argv) {
 
 //  StartAddress pReadPMAddress
   eFamily Family = dsPIC30F;
+  
+  
+    /* ----------------------------------------------------------------------
+   * 
+   * 
+   * ----------------------------------------------------------------------*/
+  
+  SendHexFile(FDSerial, pFile, Family);
+
+  
 	/* Process Read PM request and exit */
 	if(pReadPMAddress != NULL)
 	{
@@ -250,7 +261,7 @@ void PrintUsage(void)
 void PrintFeatures()
 {
   printf("------------------- Print all features ------------------\n");
-  printf("BaudRate      : %s\n", pBaudRate);
+  printf("BaudRate      : %s, code = %ld\n", pBaudRate, baudrate_code);
   printf("InterfaceName : %s\n", pInterfaceName);
   printf("ReadPMAddress : %s\n", pReadPMAddress);
   printf("ReadEEAddress : %s\n", pReadEEAddress);
@@ -266,15 +277,15 @@ void SendHexFile(int FDSerial, FILE * pFile, eFamily Family)
 	int  ExtAddr = 0;
 
 	/* Initialize Memory */
-/*	mem_cMemRow ** ppMemory = (mem_cMemRow **)malloc(sizeof(mem_cMemRow *) * 
+	mem_cMemRow ** ppMemory = (mem_cMemRow **)malloc(sizeof(mem_cMemRow *) * 
           PM_SIZE + sizeof(mem_cMemRow *) * EE_SIZE + sizeof(mem_cMemRow *) * CM_SIZE);
 
 	for(int Row = 0; Row < PM_SIZE; Row++)
 	{
 		ppMemory[Row] = new mem_cMemRow(mem_cMemRow::Program, 0x000000, Row, Family);
-	}*/
+	}
 
-/*	for(int Row = 0; Row < EE_SIZE; Row++)
+	for(int Row = 0; Row < EE_SIZE; Row++)
 	{
 		ppMemory[Row + PM_SIZE] = new mem_cMemRow(mem_cMemRow::EEProm, 0x7FF000, Row, Family);
 	}
@@ -330,9 +341,9 @@ void SendHexFile(int FDSerial, FILE * pFile, eFamily Family)
 		{
 			assert(!"Unknown hex record type\n");
 		}
-	}*/
+	}
 
-	/* Preserve first two locations for bootloader 
+//	 Preserve first two locations for bootloader 
 	{
 		char Data[32];
 		int          RowSize;
@@ -388,7 +399,7 @@ void SendHexFile(int FDSerial, FILE * pFile, eFamily Family)
 	
 	WriteCommBlock(FDSerial, Buffer, 1);
 
-	Sleep(100); */
+	Sleep(100); 
 
 	printf(" Done.\n");
 }
@@ -412,7 +423,7 @@ bool WriteCommBlock(int FDSerial, char *pBuffer , int BytesToWrite)
 }
 
 /******************************************************************************/
-int ReceiveData(int FDSerial, char * pBuffer, int BytesToReceive)
+bool ReceiveData(int FDSerial, char * pBuffer, int BytesToReceive)
 {
 	int Size = 0;
 
@@ -423,6 +434,8 @@ int ReceiveData(int FDSerial, char * pBuffer, int BytesToReceive)
     {
         printf("ERROR ! Read timeout elapsed !\n");
         return -1;
+    } else
+    {
     }
 	}
   return Size;
