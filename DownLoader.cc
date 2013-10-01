@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <termios.h>
 #include <fcntl.h>
+#include <string.h>
 #include "DownLoader.h"
 #include "cmd.h"
 #include "mem.h"
@@ -49,6 +50,7 @@ char*   pReadPMAddress = NULL;
 char*   pReadEEAddress = NULL;
 
 int Default_Timeout = 10; /* Default timeout in 1/10 sec. 10*1/10 7 1 sec. */
+int DEBUG_MODE = 0;
 
 long SearchBaudRates(long baudrates)
 { int i = 0;
@@ -171,6 +173,13 @@ int main(int argc, char**argv) {
 	}  
   PrintFeatures();
   
+  if (!strcmp((pInterfaceName), "nul"))
+  {
+   DEBUG_MODE = 1;
+   printf("DEBUG MODE ON, no any serial port opened!");
+  }
+  else
+  {
   if((FDSerial = open( pInterfaceName, O_RDWR|O_NOCTTY )) < 0 )
   {
     printf("Can't open %s Interface.", pInterfaceName);
@@ -179,7 +188,6 @@ int main(int argc, char**argv) {
   {
     printf("The %s interface successfully opened. FD: %i", pInterfaceName, FDSerial);      
   }
-  
   tcgetattr(FDSerial,&OldSerial);   // Save serial port features
   /* CLOCAL = Ignore modem control lines.
    * CS8 = Character size mask. Values are CS5, CS6, CS7, or CS8.
@@ -207,7 +215,7 @@ int main(int argc, char**argv) {
   
   tcflush(FDSerial,TCIFLUSH);
   tcsetattr(FDSerial,TCSANOW,&NewSerial);
-
+  } /* DEBUG_MODE if */
 //  StartAddress pReadPMAddress
   eFamily Family = dsPIC30F;
   
@@ -304,6 +312,11 @@ void SendHexFile(int FDSerial, FILE * pFile, eFamily Family)
 		int RecordType;
 
 		sscanf(Buffer+1, "%2x%4x%2x", &ByteCount, &Address, &RecordType);
+    
+    if (DEBUG_MODE)
+    {
+      printf("ByteCount=%2x, Address=%4x, RecordType=%2x\n", ByteCount, Address, RecordType);
+    }
 
 		if(RecordType == 0)
 		{
@@ -367,7 +380,9 @@ void SendHexFile(int FDSerial, FILE * pFile, eFamily Family)
 		Sleep(100);
 
 		printf("\nReading Target\n");
-		ReceiveData(FDSerial, Buffer, RowSize * 3);
+    
+    if (!DEBUG_MODE) ReceiveData(FDSerial, Buffer, RowSize * 3);
+    else ;
 		
 		sprintf(Data, "%02x%02x%02x00%02x%02x%02x00",   Buffer[2] & 0xFF,
 														Buffer[1] & 0xFF,
@@ -411,6 +426,7 @@ bool WriteCommBlock(int FDSerial, char *pBuffer , int BytesToWrite)
 
 	printf("\nWriteCommBlock(%i, %p , %i)\n", FDSerial, pBuffer, BytesToWrite);
 
+  if (!DEBUG_MODE)
   write(FDSerial, pBuffer, BytesToWrite);
 
 /*	if(WriteFile(*pComDev,pBuffer,BytesToWrite,&BytesWritten,&osWrite) == false)

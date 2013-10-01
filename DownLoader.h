@@ -67,6 +67,8 @@ typedef struct
     long value;
 } s_baudrate;
 
+extern int DEBUG_MODE;
+
 #define MODULE_PIC_ID           0x1C1
 #define MODULE_PROCESS_ID       0x01
 #define MODULE_PIC_FAMILY       dsPIC30F

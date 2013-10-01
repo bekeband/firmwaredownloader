@@ -180,8 +180,7 @@ void mem_cMemRow::SendData(int FDSerial)
 		{
 			assert(!"Unknown memory type");
 		}
-
-		ReceiveData(FDSerial, Buffer, 1);
+    if (!DEBUG_MODE) ReceiveData(FDSerial, Buffer, 1);
 	}
 
 }
