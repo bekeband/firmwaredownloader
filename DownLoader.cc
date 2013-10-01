@@ -276,7 +276,7 @@ void SendHexFile(int FDSerial, FILE * pFile, eFamily Family)
 	char Buffer[BUFFER_SIZE];
 	int  ExtAddr = 0;
 
-	/* Initialize Memory */
+	/* Initialize Memory Memory size =  */
 	mem_cMemRow ** ppMemory = (mem_cMemRow **)malloc(sizeof(mem_cMemRow *) * 
           PM_SIZE + sizeof(mem_cMemRow *) * EE_SIZE + sizeof(mem_cMemRow *) * CM_SIZE);
 

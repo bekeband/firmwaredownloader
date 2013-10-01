@@ -22,6 +22,7 @@ AS=as
 
 # Macros
 CND_PLATFORM=GNU-Linux-x86
+CND_DLIB_EXT=so
 CND_CONF=Debug
 CND_DISTDIR=dist
 CND_BUILDDIR=build
@@ -34,8 +35,8 @@ OBJECTDIR=${CND_BUILDDIR}/${CND_CONF}/${CND_PLATFORM}
 
 # Object Files
 OBJECTFILES= \
-	${OBJECTDIR}/cmd.o \
 	${OBJECTDIR}/DownLoader.o \
+	${OBJECTDIR}/cmd.o \
 	${OBJECTDIR}/mem.o
 
 
@@ -57,21 +58,21 @@ LDLIBSOPTIONS=
 
 # Build Targets
 .build-conf: ${BUILD_SUBPROJECTS}
-	"${MAKE}"  -f nbproject/Makefile-${CND_CONF}.mk ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/levelmeterfirmwaredownloader
+	"${MAKE}"  -f nbproject/Makefile-${CND_CONF}.mk ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/firmwaredownloader
 
-${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/levelmeterfirmwaredownloader: ${OBJECTFILES}
+${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/firmwaredownloader: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
-	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/levelmeterfirmwaredownloader ${OBJECTFILES} ${LDLIBSOPTIONS} 
-
-${OBJECTDIR}/cmd.o: cmd.cpp 
-	${MKDIR} -p ${OBJECTDIR}
-	${RM} $@.d
-	$(COMPILE.cc) -g -MMD -MP -MF $@.d -o ${OBJECTDIR}/cmd.o cmd.cpp
+	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/firmwaredownloader ${OBJECTFILES} ${LDLIBSOPTIONS}
 
 ${OBJECTDIR}/DownLoader.o: DownLoader.cc 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} $@.d
 	$(COMPILE.cc) -g -MMD -MP -MF $@.d -o ${OBJECTDIR}/DownLoader.o DownLoader.cc
+
+${OBJECTDIR}/cmd.o: cmd.cpp 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.cc) -g -MMD -MP -MF $@.d -o ${OBJECTDIR}/cmd.o cmd.cpp
 
 ${OBJECTDIR}/mem.o: mem.cpp 
 	${MKDIR} -p ${OBJECTDIR}
@@ -84,7 +85,7 @@ ${OBJECTDIR}/mem.o: mem.cpp
 # Clean Targets
 .clean-conf: ${CLEAN_SUBPROJECTS}
 	${RM} -r ${CND_BUILDDIR}/${CND_CONF}
-	${RM} ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/levelmeterfirmwaredownloader
+	${RM} ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/firmwaredownloader
 
 # Subprojects
 .clean-subprojects:
