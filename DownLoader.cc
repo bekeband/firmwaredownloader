@@ -6,20 +6,23 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <termios.h>
 #include <fcntl.h>
 #include <string.h>
 #include "DownLoader.h"
 #include "cmd.h"
 #include "mem.h"
 
-#if !defined (WINFOS)
+#if !defined (_WIN32)
   #define Sleep(X) usleep(X)
+  #include <termios.h>
 #else
+  #include <windows.h>
 #endif
 
 #define __DEBUG__
 
+
+#if !defined (_WIN32)
 s_baudrate BAUD_RATES[]={{50, B50}, {75, B75}, {110, B110}, {134, B134}, {150, B150},
 {200, B200}, {300, B300}, {600, B600}, {1200, B1200}, {1800, B1800}, {2400, B2400},
 {4800, B4800}, {9600, B9600}, {19200, B19200}, {38400, B38400}, {57600, B57600},
@@ -27,6 +30,12 @@ s_baudrate BAUD_RATES[]={{50, B50}, {75, B75}, {110, B110}, {134, B134}, {150, B
 {576000, B576000}, {921600, B921600}, {1000000, B1000000}, {1152000, B1152000},
 {1500000, B1500000}, {2000000, B2000000}, {2500000, B2500000}, {3000000, B3000000},
 {3500000, B3500000}, {4000000, B4000000}, {0,0}};
+#else
+     s_baudrate BAUD_RATES[]={{110, CBR_110}, {300, CBR_300}, {600, CBR_600}, {1200, CBR_1200},
+     {2400, CBR_2400}, {4800, CBR_4800}, {9600, CBR_9600}, {14400, CBR_14400}, {19200, CBR_19200},
+     {38400, CBR_38400}, {57600, CBR_57600}, {115200, CBR_115200}, {128000, CBR_128000}, 
+     {256000, CBR_256000}};   
+#endif
 
 /*HANDLE OpenConnection (HANDLE *pComDev,  char *pPortName, char *pBaudRate);*/
 bool    WriteCommBlock (int FDHandle, char *pBuffer ,  int BytesToWrite);
@@ -67,9 +76,13 @@ int main(int argc, char**argv) {
 	FILE* pFile = NULL;
   int FDSerial = -1;
   
+#if !defined (_WIN32)
   struct termios		OldSerial;
   struct termios		NewSerial;
-
+#else
+  COMMTIMEOUTS  OldSerial;
+  COMMTIMEOUTS  NewSerial;
+#endif
     
 	while (ProgCommand.Next())
 	{
