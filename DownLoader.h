@@ -9,6 +9,15 @@
 #ifndef _downloader_H
 #define	_downloader_H
 
+#if !defined (_WIN32)
+  #define Sleep(X) usleep(X)
+  #include <termios.h>
+#else
+  #include <windows.h>
+  #include <tchar.h>
+  #include <stdio.h>
+#endif
+
 #define SCI_INTERFACE_NAME "COM"
 
 #define BYTESIZE   8
@@ -40,6 +49,12 @@
 #define PM_SIZE 1536 /* Max: 144KB/3/32=1536 PM rows for 30F. */
 #define EE_SIZE 128 /* 4KB/2/16=128 EE rows */
 #define CM_SIZE 8
+
+#if !defined (_WIN32)
+#define FILETYPE int
+#else
+#define FILETYPE HANDLE
+#endif
 
 typedef unsigned short int usint;
 

@@ -15,7 +15,7 @@ public:
 
 	bool InsertData(unsigned int Address, char * pData);
 	void FormatData(void);
-	void SendData  (int FDHandle);
+	void SendData  (FILETYPE FDHandle);
 
 private:
 	char           * m_pBuffer;

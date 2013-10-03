@@ -6,8 +6,8 @@
 #include "DownLoader.h"
 #include "mem.h"
 
-extern bool   WriteCommBlock (int FDHandle, char *pBuffer ,  int BytesToWrite);
-extern void   ReceiveData(int FDHandle, char * pBuffer, int BytesToReceive);
+extern bool   WriteCommBlock (FILETYPE FDHandle, char *pBuffer ,  int BytesToWrite);
+extern void   ReceiveData(FILETYPE FDHandle, char * pBuffer, int BytesToReceive);
 
 /******************************************************************************/
 mem_cMemRow::mem_cMemRow(eType Type, unsigned int StartAddr, int RowNumber, eFamily Family)
@@ -120,7 +120,7 @@ void mem_cMemRow::FormatData(void)
 	}
 }
 /******************************************************************************/
-void mem_cMemRow::SendData(int FDSerial)
+void mem_cMemRow::SendData(FILETYPE FDSerial)
 {
 	char Buffer[4] = {0,0,0,0};
 

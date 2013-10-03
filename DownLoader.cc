@@ -12,14 +12,17 @@
 #include "cmd.h"
 #include "mem.h"
 
+
+//#define __DEBUG__
+
 #if !defined (_WIN32)
   #define Sleep(X) usleep(X)
   #include <termios.h>
 #else
   #include <windows.h>
+  #include <tchar.h>
+  #include <stdio.h>
 #endif
-
-#define __DEBUG__
 
 
 #if !defined (_WIN32)
@@ -31,25 +34,24 @@ s_baudrate BAUD_RATES[]={{50, B50}, {75, B75}, {110, B110}, {134, B134}, {150, B
 {1500000, B1500000}, {2000000, B2000000}, {2500000, B2500000}, {3000000, B3000000},
 {3500000, B3500000}, {4000000, B4000000}, {0,0}};
 #else
-     s_baudrate BAUD_RATES[]={{110, CBR_110}, {300, CBR_300}, {600, CBR_600}, {1200, CBR_1200},
+s_baudrate BAUD_RATES[]={{110, CBR_110}, {300, CBR_300}, {600, CBR_600}, {1200, CBR_1200},
      {2400, CBR_2400}, {4800, CBR_4800}, {9600, CBR_9600}, {14400, CBR_14400}, {19200, CBR_19200},
      {38400, CBR_38400}, {57600, CBR_57600}, {115200, CBR_115200}, {128000, CBR_128000}, 
      {256000, CBR_256000}};   
 #endif
 
 /*HANDLE OpenConnection (HANDLE *pComDev,  char *pPortName, char *pBaudRate);*/
-bool    WriteCommBlock (int FDHandle, char *pBuffer ,  int BytesToWrite);
-int    ReadCommBlock  (int FDHandle, char *pBuffer,   int MaxLength);
+bool    WriteCommBlock (FILETYPE FDHandle, char *pBuffer ,  int BytesToWrite);
+int    ReadCommBlock  (FILETYPE FDHandle, char *pBuffer,   int MaxLength);
 /*BOOL   CloseConnection(HANDLE *pComdDev);*/
 
-bool ReceiveData(int FDHandle, char * pBuffer, int BytesToReceive);
+bool ReceiveData(FILETYPE FDHandle, char * pBuffer, int BytesToReceive);
 void PrintUsage(void);
 void PrintFeatures();
 /*eFamily ReadID(HANDLE *pComDev);*/
-void    ReadPM(int FDHandle, char * pReadPMAddress, eFamily Family);
-void    ReadEE(int FDHandle, char * pReadEEAddress, eFamily Family);
-void    SendHexFile(int FDHandle, FILE * pFile, eFamily Family);
-
+void    ReadPM(FILETYPE FDHandle, char * pReadPMAddress, eFamily Family);
+void    ReadEE(FILETYPE FDHandle, char * pReadEEAddress, eFamily Family);
+void    SendHexFile(FILETYPE FDHandle, FILE * pFile, eFamily Family);
 /* Global features here. */
 const char*   pBaudRate       = "9600";
 long    baudrate_code   = 13; /* !! Must equal the BAUD_RATES["9600"].value !!
@@ -70,18 +72,45 @@ long SearchBaudRates(long baudrates)
     return BAUD_RATES[i].value;
 }
 
+#if !defined (_WIN32)
+#else
+void GetLastErrorAndExit()
+{
+    LPVOID lpMsgBuf;
+    LPVOID lpDisplayBuf;
+    DWORD dw = GetLastError(); 
+
+    FormatMessage(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+        FORMAT_MESSAGE_FROM_SYSTEM |
+        FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL,
+        dw,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        (LPTSTR) &lpMsgBuf,
+        0, NULL );
+  printf ("Last error: %s.\n", lpMsgBuf);
+  LocalFree(lpMsgBuf);
+  LocalFree(lpDisplayBuf);
+  ExitProcess(dw); 
+};
+#endif
+
 int main(int argc, char**argv) {
 
   cmd_cCmd ProgCommand(argv, "i:b:p:e:");     
-	FILE* pFile = NULL;
-  int FDSerial = -1;
+  FILE* pFile = NULL;
+        
+  
   
 #if !defined (_WIN32)
   struct termios		OldSerial;
   struct termios		NewSerial;
+  int FDSerial = -1;
 #else
-  COMMTIMEOUTS  OldSerial;
-  COMMTIMEOUTS  NewSerial;
+  DCB SerialDCB;
+//  COMMTIMEOUTS  
+  HANDLE FDSerial;
 #endif
     
 	while (ProgCommand.Next())
@@ -186,48 +215,115 @@ int main(int argc, char**argv) {
 	}  
   PrintFeatures();
   
-  if (!strcmp((pInterfaceName), "nul"))
+  if ((!pInterfaceName) || (!strcmp((pInterfaceName), "nul")))
   {
    DEBUG_MODE = 1;
    printf("DEBUG MODE ON, no any serial port opened!");
   }
   else
   {
+      
+#if !defined (_WIN32)
+
   if((FDSerial = open( pInterfaceName, O_RDWR|O_NOCTTY )) < 0 )
+#else
+        /* Windows open serial communication. Arguments:
+   * 1.: pInterfaceName     pointer the file name eg. COM1,... COM15
+   * 2.: GENERIC_READ | GENERIC_WRITE These are is evident.
+   * 3.: Prevents other processes from opening a file or device if they request 
+   *    delete, read, or write access.
+   * 4.: NULL If this parameter is NULL, the handle returned by CreateFile cannot be 
+   *    inherited by any child processes the application may create and the file 
+   *    or device associated with the returned handle gets a default security descriptor.
+   * 5.: OPEN_EXISTING
+   * 
+   * The CreateFile function can create a handle to a communications resource, 
+   * such as the serial port COM1. For communications resources, the 
+   * dwCreationDisposition parameter must be OPEN_EXISTING, the dwShareMode 
+   * parameter must be zero (exclusive access), and the hTemplateFile parameter 
+   * must be NULL. Read, write, or read/write access can be specified, and the 
+   * handle can be opened for overlapped I/O. specify a COM port number greater 
+   * than 9, use the following syntax: "\\.\COM10". This syntax works for all 
+   * port numbers and hardware that allows COM port numbers to be specified.
+   */
+  if ((FDSerial = CreateFile(pInterfaceName, GENERIC_READ | GENERIC_WRITE, 0, NULL, 
+          OPEN_EXISTING, 0, NULL)) == INVALID_HANDLE_VALUE)
+#endif
   {
-    printf("Can't open %s Interface.", pInterfaceName);
-    exit(2);
+    printf("Can't open %s Interface. ", pInterfaceName);
+    GetLastErrorAndExit();
   }else
   {
-    printf("The %s interface successfully opened. FD: %i", pInterfaceName, FDSerial);      
+    printf("The %s interface successfully opened.\n", pInterfaceName);      
   }
+  
+#if !defined (_WIN32)  
+  
   tcgetattr(FDSerial,&OldSerial);   // Save serial port features
   /* CLOCAL = Ignore modem control lines.
    * CS8 = Character size mask. Values are CS5, CS6, CS7, or CS8.
    * CREAD = Enable receiver.
    */
-  NewSerial.c_cflag = baudrate_code | CS8 | CLOCAL | CREAD;
+  SerialDCB.c_cflag = baudrate_code | CS8 | CLOCAL | CREAD;
   /* IGNPAR = Ignore framing errors and parity errors. */
-  NewSerial.c_iflag = IGNPAR;
+  SerialDCB.c_iflag = IGNPAR;
   /* ONLCR = (XSI) Map NL to CR-NL on output.*/
-  NewSerial.c_oflag = ONLCR;
+  SerialDCB.c_oflag = ONLCR;
   /* The setting of the ICANON canon flag in c_lflag determines whether the 
    * terminal is operating in canonical mode (ICANON set) or noncanonical mode 
    * (ICANON unset). By default, ICANON set.*/
-  NewSerial.c_lflag = 0;
+  SerialDCB.c_lflag = 0;
   /* special characters 
    * The c_cc array defines the terminal special characters. 
    * The symbolic indices (initial values) and meaning are
    * Minimum number of characters for noncanonical read (MIN).
    */
-  NewSerial.c_cc[VMIN] = 0; 
+  SerialDCB.c_cc[VMIN] = 0; 
   
   /* Timeout in deciseconds for noncanonical read (TIME). */
   
-  NewSerial.c_cc[VTIME] = Default_Timeout;  /* Timeout for Default (1 sec.))*/
+  SerialDCB.c_cc[VTIME] = Default_Timeout;  /* Timeout for Default (1 sec.))*/
   
   tcflush(FDSerial,TCIFLUSH);
-  tcsetattr(FDSerial,TCSANOW,&NewSerial);
+  tcsetattr(FDSerial,TCSANOW,&SerialDCB);
+#else
+      
+   //  Initialize the DCB structure.
+   ZeroMemory(&SerialDCB, sizeof(DCB));
+   SerialDCB.DCBlength = sizeof(DCB);
+
+   //  Build on the current configuration by first retrieving all current settings.
+   
+   if (!GetCommState(FDSerial, &SerialDCB)) 
+   {
+      //  Handle the error.
+      printf ("GetCommState failed in %s interface.\n", pInterfaceName);
+      GetLastErrorAndExit();
+   }
+  
+   SerialDCB.BaudRate = baudrate_code;
+   SerialDCB.ByteSize = 8;
+   SerialDCB.Parity = NOPARITY;
+   SerialDCB.StopBits = ONESTOPBIT;
+   SerialDCB.fRtsControl = RTS_CONTROL_DISABLE;
+   SerialDCB.fDtrControl = DTR_CONTROL_DISABLE;
+   SerialDCB.fBinary = TRUE;
+   SerialDCB.fParity = FALSE;
+
+   if (!SetCommState(FDSerial, &SerialDCB))
+   {
+      //  Handle the error.
+      printf ("SetCommState failed in %s interface.\n", pInterfaceName);
+      GetLastErrorAndExit();
+   }
+
+   CloseHandle(FDSerial);
+   printf("Test end ---------------------------------------------------------");
+   exit(0);
+   
+//   CloseFile(FDSerial);
+   
+#endif
   } /* DEBUG_MODE if */
 //  StartAddress pReadPMAddress
   eFamily Family = dsPIC30F;
@@ -254,8 +350,16 @@ int main(int argc, char**argv) {
 		ReadEE(FDSerial, pReadEEAddress, Family);
 		return 0;
 	}  
+  if (!DEBUG_MODE)
+  {
+#if !defined (_WIN32)
   
   close(FDSerial);
+#else
+  CloseHandle(FDSerial);
+#endif      
+  }
+  
   printf("Program done.\n");
   return 0;
   
@@ -290,9 +394,13 @@ void PrintFeatures()
 }
 
 /*****************************************************************************
- * SendHexFile
+ * SendHexFile for linux 
  */
+#if !defined (_WIN32)
 void SendHexFile(int FDSerial, FILE * pFile, eFamily Family)
+#else
+void SendHexFile(HANDLE FDSerial, FILE * pFile, eFamily Family)
+#endif
 {
 	char Buffer[BUFFER_SIZE];
 	int  ExtAddr = 0;
@@ -419,7 +527,7 @@ void SendHexFile(int FDSerial, FILE * pFile, eFamily Family)
 
 	for(int Row = 0; Row < (PM_SIZE + EE_SIZE + CM_SIZE); Row++)
 	{
-		ppMemory[Row]->SendData(FDSerial);
+//		ppMemory[Row]->SendData(FDSerial); FIXME
 	}
 
 	
@@ -433,14 +541,18 @@ void SendHexFile(int FDSerial, FILE * pFile, eFamily Family)
 }
 
 /******************************************************************************/
+#if !defined (_WIN32)
 bool WriteCommBlock(int FDSerial, char *pBuffer , int BytesToWrite)
+#else
+bool WriteCommBlock(HANDLE FDSerial, char *pBuffer , int BytesToWrite)
+#endif
 {
 	bool       bWriteStat   = 0;
 
 	printf("\nWriteCommBlock(%i, %p , %i)\n", FDSerial, pBuffer, BytesToWrite);
 
   if (!DEBUG_MODE)
-  write(FDSerial, pBuffer, BytesToWrite);
+//  write(FDSerial, pBuffer, BytesToWrite);
 
 /*	if(WriteFile(*pComDev,pBuffer,BytesToWrite,&BytesWritten,&osWrite) == false)
 	{
@@ -452,13 +564,13 @@ bool WriteCommBlock(int FDSerial, char *pBuffer , int BytesToWrite)
 }
 
 /******************************************************************************/
-bool ReceiveData(int FDSerial, char * pBuffer, int BytesToReceive)
+bool ReceiveData(FILETYPE FDSerial, char * pBuffer, int BytesToReceive)
 {
 	int Size = 0;
 
 	while(Size != BytesToReceive)
 	{
-		Size += read(FDSerial, pBuffer + Size, BytesToReceive - Size);
+//		Size += read(FDSerial, pBuffer + Size, BytesToReceive - Size);  FIXME
     if (!Size) 
     {
         printf("ERROR ! Read timeout elapsed !\n");
@@ -507,7 +619,7 @@ int ReadCommBlock(int FDSerial, char * pBuffer, int MaxLength )
 }
 
 /******************************************************************************/
-void ReadPM(int FDSerial, char * pReadPMAddress, eFamily Family)
+void ReadPM(FILETYPE FDSerial, char * pReadPMAddress, eFamily Family)
 {
 	int          Count;
 	unsigned int ReadAddress;
@@ -557,7 +669,7 @@ void ReadPM(int FDSerial, char * pReadPMAddress, eFamily Family)
 }
 
 /******************************************************************************/
-void ReadEE(int FDHandle, char * pReadEEAddress, eFamily Family)
+void ReadEE(FILETYPE FDHandle, char * pReadEEAddress, eFamily Family)
 {
 	int          Count;
 	unsigned int ReadAddress;
